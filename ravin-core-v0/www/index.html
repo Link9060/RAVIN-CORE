@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>RAVIN Core</title>
+<style>
+  :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:#000; color:#fff; display:flex; justify-content:center; }
+  .app { width:min(720px,100%); min-height:100vh; padding:24px 18px calc(20px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; justify-content:space-between; opacity:.9; }
+  .brand { letter-spacing:.24em; font-size:12px; font-weight:700; }
+  .status { font-size:12px; color:#a7a7a7; }
+  .core-area { flex:1; display:grid; place-items:center; min-height:300px; }
+  .core { width:132px; height:132px; border-radius:50%; border:1px solid #333; display:grid; place-items:center; transition:.35s ease; box-shadow:0 0 0 rgba(255,255,255,0); }
+  .dot { width:18px; height:18px; border-radius:50%; background:white; box-shadow:0 0 28px rgba(255,255,255,.7); transition:.35s ease; }
+  .core.listening { transform:scale(1.04); border-color:#777; box-shadow:0 0 55px rgba(255,255,255,.12); }
+  .core.thinking .dot { animation:pulse .85s infinite alternate; }
+  .core.speaking .dot { animation:speak .35s infinite alternate; }
+  @keyframes pulse { from{transform:scale(.75);opacity:.45} to{transform:scale(1.35);opacity:1} }
+  @keyframes speak { from{transform:scale(.8)} to{transform:scale(1.25)} }
+  .transcript { min-height:110px; max-height:28vh; overflow:auto; padding:8px 2px 18px; }
+  .msg { margin:9px 0; line-height:1.35; font-size:15px; }
+  .you { color:#aaa; }
+  .ravin { color:#fff; }
+  form { display:flex; gap:10px; position:sticky; bottom:0; background:linear-gradient(transparent,#000 18%); padding-top:24px; }
+  input { flex:1; min-width:0; border:1px solid #2b2b2b; border-radius:16px; background:#0d0d0d; color:#fff; padding:15px 16px; font-size:16px; outline:none; }
+  input:focus { border-color:#666; }
+  button { border:1px solid #3a3a3a; border-radius:16px; background:#fff; color:#000; padding:0 18px; font-size:15px; font-weight:650; }
+  .hint { color:#666; text-align:center; font-size:11px; margin:10px 0 0; }
+</style>
+</head>
+<body>
+<main class="app">
+  <header><div class="brand">RAVIN CORE</div><div class="status" id="status">ONLINE</div></header>
+  <section class="core-area"><div id="core" class="core"><div class="dot"></div></div></section>
+  <section class="transcript" id="transcript"></section>
+  <form id="form">
+    <input id="input" autocomplete="off" autocorrect="on" placeholder="Ask RAVIN…" />
+    <button type="submit">Send</button>
+  </form>
+  <div class="hint">Use the microphone on the iPhone keyboard to dictate.</div>
+</main>
+<script>
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+const transcript = document.getElementById('transcript');
+const core = document.getElementById('core');
+const status = document.getElementById('status');
+const history = [];
+
+function state(name, label) {
+  core.className = 'core ' + name;
+  status.textContent = label;
+}
+function add(cls, who, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.textContent = who + '  ' + text;
+  transcript.appendChild(div);
+  transcript.scrollTop = transcript.scrollHeight;
+}
+function speak(text) {
+  if (!('speechSynthesis' in window)) { state('', 'ONLINE'); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.02;
+  u.pitch = .92;
+  u.onstart = () => state('speaking', 'SPEAKING');
+  u.onend = () => state('', 'ONLINE');
+  u.onerror = () => state('', 'ONLINE');
+  speechSynthesis.speak(u);
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = '';
+  add('you', 'YOU', message);
+  history.push({role:'user', content:message});
+  state('thinking', 'THINKING');
+  try {
+    const res = await fetch('/api/message', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message, history})
+    });
+    const data = await res.json();
+    const reply = data.reply || 'No response.';
+    history.push({role:'assistant', content:reply});
+    add('ravin', 'RAVIN', reply);
+    speak(reply);
+  } catch (err) {
+    add('ravin', 'RAVIN', 'I lost the connection to the Core server.');
+    state('', 'OFFLINE');
+  }
+});
+
+core.addEventListener('click', () => { state('listening', 'READY'); input.focus(); });
+input.addEventListener('focus', () => state('listening', 'READY'));
+input.addEventListener('blur', () => { if (!speechSynthesis.speaking) state('', 'ONLINE'); });
+</script>
+</body>
+</html>

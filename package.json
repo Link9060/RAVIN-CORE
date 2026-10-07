@@ -1,0 +1,16 @@
+{
+  "name": "ravin-core",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "RAVIN Core - voice-first personal AI interface",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "check": "node --check server.js && node --check src/cloudflareClient.js && node --check src/sessionStore.js && node --check src/systemPrompt.js && node --check public/app.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

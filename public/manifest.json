@@ -1,0 +1,9 @@
+{
+  "name": "RAVIN Core",
+  "short_name": "RAVIN",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "description": "RAVIN Core voice-first personal AI interface"
+}
